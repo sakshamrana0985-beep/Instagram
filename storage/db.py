@@ -167,6 +167,47 @@ async def vector_search(
     return [_row_to_item(r) for r in rows]
 
 
+async def log_search_event(pool: asyncpg.Pool, user_id: UUID, query: str, result_count: int) -> UUID:
+    row = await pool.fetchrow(
+        "insert into search_events (user_id, query, result_count) values ($1, $2, $3) returning id",
+        user_id,
+        query,
+        result_count,
+    )
+    return row["id"]
+
+
+async def mark_search_opened(pool: asyncpg.Pool, search_event_id: UUID, item_id: UUID) -> None:
+    await pool.execute(
+        "update search_events set opened_item = $1 where id = $2", item_id, search_event_id
+    )
+
+
+async def log_item_open(pool: asyncpg.Pool, item_id: UUID, user_id: UUID) -> int:
+    """Records an open event and bumps items.open_count/last_opened_at.
+    Returns days_since_saved — the number the north-star retrieval metric is built on."""
+    item = await get_item(pool, item_id)
+    if item is None:
+        raise ValueError(f"no such item: {item_id}")
+
+    now = datetime.now(timezone.utc)
+    saved_at = item.saved_at if item.saved_at.tzinfo else item.saved_at.replace(tzinfo=timezone.utc)
+    days_since_saved = (now - saved_at).days
+
+    await pool.execute(
+        "insert into item_open_events (item_id, user_id, days_since_saved) values ($1, $2, $3)",
+        item_id,
+        user_id,
+        days_since_saved,
+    )
+    await pool.execute(
+        "update items set last_opened_at = $1, open_count = open_count + 1 where id = $2",
+        now,
+        item_id,
+    )
+    return days_since_saved
+
+
 async def keyword_search(
     pool: asyncpg.Pool, user_id: UUID, query: str, limit: int = 10
 ) -> list[Item]:
