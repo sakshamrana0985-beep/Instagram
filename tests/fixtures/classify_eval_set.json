@@ -1,0 +1,82 @@
+[
+  {
+    "text": "5 tax-saving hacks beyond 80C: 1) NPS Tier 1 under 80CCD(1B) gives an extra 50000 deduction. 2) Health insurance premium under 80D. 3) Home loan interest under 24b. 4) HRA exemption if you pay rent. 5) ELSS mutual funds lock in for 3 years and qualify under 80C.",
+    "label": {"content_type": "listicle", "is_informational": true}
+  },
+  {
+    "text": "Here are 7 AI tools every developer should know in 2026: Cursor for editing, Claude Code for agentic coding, v0 for UI generation, Perplexity for research, Notion AI for docs, Runway for video, and ElevenLabs for voice.",
+    "label": {"content_type": "listicle", "is_informational": true}
+  },
+  {
+    "text": "How to deadlift with proper form: 1) Feet hip-width apart, bar over midfoot. 2) Hinge at hips, grip just outside knees. 3) Flat back, chest up. 4) Drive through heels, bar stays close to shins. 5) Lock out hips and knees together at the top.",
+    "label": {"content_type": "tutorial", "is_informational": true}
+  },
+  {
+    "text": "Step by step guide to set up a Python virtual environment: run python -m venv venv, activate it with source venv/bin/activate on mac/linux or venv\\Scripts\\activate on windows, then pip install -r requirements.txt.",
+    "label": {"content_type": "tutorial", "is_informational": true}
+  },
+  {
+    "text": "15 minute garlic butter shrimp pasta. Ingredients: 200g spaghetti, 300g shrimp, 4 cloves garlic, 50g butter, chili flakes, parsley, lemon. Boil pasta. Saute garlic in butter, add shrimp, cook 2 min per side, toss with pasta, lemon juice, parsley.",
+    "label": {"content_type": "recipe", "is_informational": true}
+  },
+  {
+    "text": "Quick recipe for overnight oats: mix 1/2 cup oats, 1/2 cup milk, 1 tbsp chia seeds, 1 tsp honey in a jar. Refrigerate overnight. Top with banana and peanut butter in the morning.",
+    "label": {"content_type": "recipe", "is_informational": true}
+  },
+  {
+    "text": "Why does the sky turn orange at sunset? Sunlight travels through more atmosphere at low angles, scattering away blue wavelengths via Rayleigh scattering and leaving the longer red and orange wavelengths to reach your eyes.",
+    "label": {"content_type": "explainer", "is_informational": true}
+  },
+  {
+    "text": "What is compound interest and why does it matter? It's interest calculated on both the initial principal and the accumulated interest from previous periods, which is why starting to invest early has an outsized effect over decades.",
+    "label": {"content_type": "explainer", "is_informational": true}
+  },
+  {
+    "text": "RBI keeps repo rate unchanged at 6.5% in its latest monetary policy meeting, citing inflation concerns while signaling a possible cut later this year if food prices stabilize.",
+    "label": {"content_type": "news", "is_informational": true}
+  },
+  {
+    "text": "Apple announces new MacBook Pro with M5 chip, claiming 30% faster performance and improved battery life, available for pre-order starting next week.",
+    "label": {"content_type": "news", "is_informational": true}
+  },
+  {
+    "text": "POV: when your mom calls your name in that specific tone and you know you're in trouble. *dramatic music* *zoom in on shocked face*",
+    "label": {"content_type": "entertainment", "is_informational": false}
+  },
+  {
+    "text": "Me trying to act normal after seeing my crush in the hallway vs what's actually happening in my brain. *chaotic transition* *trending audio*",
+    "label": {"content_type": "entertainment", "is_informational": false}
+  },
+  {
+    "text": "Dancing to the new viral trend with my dog wearing matching outfits, so cute omg who else is obsessed with this song",
+    "label": {"content_type": "entertainment", "is_informational": false}
+  },
+  {
+    "text": "A day in my life as a software engineer, wake up, coffee, standup meeting, code, lunch with the team, more code, gym, dinner, sleep. Vlog style with lo-fi music.",
+    "label": {"content_type": "entertainment", "is_informational": false}
+  },
+  {
+    "text": "3 mistakes killing your resume: 1) generic objective statements nobody reads. 2) listing duties instead of quantified achievements. 3) no tailoring per job, same resume for every application.",
+    "label": {"content_type": "listicle", "is_informational": true}
+  },
+  {
+    "text": "How to negotiate your salary: research market rate on levels.fyi, always let them name a number first, anchor high with a range, and always get the offer in writing before accepting.",
+    "label": {"content_type": "tutorial", "is_informational": true}
+  },
+  {
+    "text": "One pot chicken and rice: brown chicken thighs, remove. Saute onion and garlic, add rice, chicken stock, return chicken, simmer covered 20 minutes, rest 5 minutes.",
+    "label": {"content_type": "recipe", "is_informational": true}
+  },
+  {
+    "text": "What actually happens during a solar eclipse? The moon passes directly between the sun and earth, casting a shadow that blocks the sun's light for a few minutes along a narrow path on earth's surface.",
+    "label": {"content_type": "explainer", "is_informational": true}
+  },
+  {
+    "text": "New study finds 8 hours of sleep improves memory retention by 40% compared to 5 hours, researchers at a major university tracked 200 participants over 6 weeks.",
+    "label": {"content_type": "news", "is_informational": true}
+  },
+  {
+    "text": "Rating gas station snacks based purely on vibes, this one gets a 10/10 for nostalgia even though it tastes like cardboard, comment your favorites below",
+    "label": {"content_type": "entertainment", "is_informational": false}
+  }
+]
