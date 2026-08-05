@@ -32,6 +32,16 @@ def _flatten(value) -> list[str]:
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
 async def embed(client: genai.Client, title: str, summary: dict, topics: list[str]) -> list[float]:
     text = build_embedding_text(title, summary, topics)
+    return await _embed_text(client, text)
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
+async def embed_query(client: genai.Client, query: str) -> list[float]:
+    """Embed a search query — same vector space as embed(), no summary/topics to fold in."""
+    return await _embed_text(client, query)
+
+
+async def _embed_text(client: genai.Client, text: str) -> list[float]:
     response = await client.aio.models.embed_content(
         model=MODEL,
         contents=text,

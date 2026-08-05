@@ -165,3 +165,28 @@ async def vector_search(
         limit,
     )
     return [_row_to_item(r) for r in rows]
+
+
+async def keyword_search(
+    pool: asyncpg.Pool, user_id: UUID, query: str, limit: int = 10
+) -> list[Item]:
+    """Postgres full-text search on title + summary. Handles exact terms
+    ("80CCD", brand names) that vector search alone can miss."""
+    rows = await pool.fetch(
+        """
+        select *, ts_rank(
+            to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary::text, '')),
+            websearch_to_tsquery('english', $2)
+        ) as rank
+        from items
+        where user_id = $1
+          and to_tsvector('english', coalesce(title, '') || ' ' || coalesce(summary::text, ''))
+              @@ websearch_to_tsquery('english', $2)
+        order by rank desc
+        limit $3
+        """,
+        user_id,
+        query,
+        limit,
+    )
+    return [_row_to_item(r) for r in rows]
