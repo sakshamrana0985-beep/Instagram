@@ -14,7 +14,7 @@ from uuid import UUID
 import asyncpg
 from pgvector.asyncpg import register_vector
 
-from storage.models import Item, ItemStatus, UrlCacheEntry
+from storage.models import Item, ItemStatus, UrlCacheEntry, User
 
 _pool: asyncpg.Pool | None = None
 
@@ -35,6 +35,15 @@ async def close_pool() -> None:
     if _pool is not None:
         await _pool.close()
         _pool = None
+
+
+async def get_or_create_user(pool: asyncpg.Pool, telegram_id: int) -> User:
+    row = await pool.fetchrow("select * from users where telegram_id = $1", telegram_id)
+    if row is None:
+        row = await pool.fetchrow(
+            "insert into users (telegram_id) values ($1) returning *", telegram_id
+        )
+    return User.model_validate(dict(row))
 
 
 def _row_to_item(row: asyncpg.Record) -> Item:
