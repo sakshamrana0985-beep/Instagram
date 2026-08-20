@@ -240,3 +240,13 @@ async def keyword_search(
         limit,
     )
     return [_row_to_item(r) for r in rows]
+
+
+async def count_items_saved_since(pool: asyncpg.Pool, user_id: UUID, since: datetime) -> int:
+    """Saves in a rolling window — the number the free-tier cap is measured against."""
+    row = await pool.fetchrow(
+        "select count(*) as n from items where user_id = $1 and saved_at >= $2",
+        user_id,
+        since,
+    )
+    return int(row["n"])

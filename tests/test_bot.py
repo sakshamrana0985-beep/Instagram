@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
@@ -7,6 +8,7 @@ import pytest
 
 from bot import main as bot_main
 from bot.main import _extract_first_url
+from pipeline.quota import QuotaStatus
 from storage.models import Item
 
 from .conftest import requires_postgres
@@ -39,9 +41,24 @@ def _make_update(text: str, user_id: int = 42, chat_id: int = 99):
 
 
 def _make_context(pool, gemini_client=None, apify_token=None, args=None):
+    """`background_tasks` lets a test await the work handle_link kicked off,
+    without making handle_link itself blocking."""
+    background_tasks: list[asyncio.Future] = []
+
+    def _create_task(coro):
+        task = asyncio.ensure_future(coro)
+        background_tasks.append(task)
+        return task
+
     application = SimpleNamespace(
-        bot_data={"pool": pool, "gemini_client": gemini_client, "apify_token": apify_token},
-        create_task=MagicMock(side_effect=lambda coro: asyncio.ensure_future(coro)),
+        bot_data={
+            "pool": pool,
+            "gemini_client": gemini_client,
+            "apify_token": apify_token,
+            "groq_api_key": None,
+        },
+        create_task=MagicMock(side_effect=_create_task),
+        background_tasks=background_tasks,
     )
     return SimpleNamespace(
         application=application,
@@ -208,3 +225,51 @@ async def test_open_item_callback_logs_open_and_sends_item(pool):
 
     row = await pool.fetchrow("select * from item_open_events where item_id = $1", item.id)
     assert row is not None
+
+
+@pytest.mark.asyncio
+async def test_handle_link_refuses_over_quota_before_any_paid_call(pool, monkeypatch):
+    process_mock = AsyncMock()
+    monkeypatch.setattr(bot_main, "process_url", process_mock)
+    monkeypatch.setattr(
+        bot_main,
+        "check_quota",
+        AsyncMock(return_value=QuotaStatus(allowed=False, used=15, limit=15)),
+    )
+
+    update = _make_update("https://instagram.com/reel/abc")
+    context = _make_context(pool)
+    await bot_main.handle_link(update, context)
+    await asyncio.gather(*context.application.background_tasks)
+
+    process_mock.assert_not_awaited()
+    text = context.bot.edit_message_text.await_args.kwargs["text"]
+    assert "free limit of 15" in text
+    assert "/search still works" in text
+
+
+@pytest.mark.asyncio
+async def test_handle_link_processes_when_under_quota(pool, monkeypatch):
+    item = Item(
+        id=uuid4(),
+        user_id=uuid4(),
+        url="https://instagram.com/reel/abc",
+        url_hash="h",
+        status="ready",
+        content_type="listicle",
+        title="3 AI tools",
+        summary={"headline": "3 AI tools", "items": []},
+        saved_at=datetime.now(timezone.utc),
+    )
+    process_mock = AsyncMock(return_value=item)
+    monkeypatch.setattr(bot_main, "process_url", process_mock)
+    monkeypatch.setattr(
+        bot_main, "check_quota", AsyncMock(return_value=QuotaStatus(allowed=True, used=1, limit=15))
+    )
+
+    update = _make_update("https://instagram.com/reel/abc")
+    context = _make_context(pool)
+    await bot_main.handle_link(update, context)
+    await asyncio.gather(*context.application.background_tasks)
+
+    process_mock.assert_awaited()

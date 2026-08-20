@@ -31,6 +31,7 @@ from bot.render import render_item, render_search_result_card
 from config import Settings, load_settings
 from pipeline.analytics import get_admin_stats, get_user_stats
 from pipeline.process import process_url
+from pipeline.quota import check_quota
 from pipeline.search import hybrid_search
 from storage import db
 
@@ -72,6 +73,22 @@ async def _process_and_edit(
 
     try:
         user = await db.get_or_create_user(pool, telegram_user_id)
+
+        # Checked after the ack, before any paid call: the cap exists to bound
+        # cost (PRD §8), and the instant reply is the habit requirement.
+        quota = await check_quota(pool, user)
+        if not quota.allowed:
+            await context.bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                text=(
+                    f"You've hit the free limit of {quota.limit} saves a week. "
+                    "It resets as your older saves roll past 7 days — "
+                    f"/search still works on everything you already have.\n🔗 {url}"
+                ),
+            )
+            return
+
         item = await process_url(
             pool, client, url, user.id, apify_token=apify_token, groq_api_key=groq_api_key
         )
@@ -142,8 +159,11 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     pool = context.application.bot_data["pool"]
     user = await db.get_or_create_user(pool, update.effective_user.id)
     stats = await get_user_stats(pool, user.id)
+    quota = await check_quota(pool, user)
     await update.message.reply_text(
-        f"📊 Items saved: {stats.items_saved}\n📖 Items opened: {stats.items_opened}"
+        f"📊 Items saved: {stats.items_saved}\n"
+        f"📖 Items opened: {stats.items_opened}\n"
+        f"🎟 Saves left this week: {quota.remaining}/{quota.limit}"
     )
 
 
