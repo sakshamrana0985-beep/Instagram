@@ -202,7 +202,13 @@ def build_application(settings: Settings, pool, gemini_client: genai.Client) -> 
 
 async def _main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
-    settings = load_settings()
+    try:
+        settings = load_settings()
+    except RuntimeError as exc:
+        # A missing key is a setup mistake, not a bug — say so in one line
+        # instead of a traceback.
+        print(f"\nCannot start: {exc}\n", file=sys.stderr)
+        raise SystemExit(1) from None
     pool = await db.get_pool(settings.supabase_db_url)
     gemini_client = genai.Client(api_key=settings.gemini_api_key)
 

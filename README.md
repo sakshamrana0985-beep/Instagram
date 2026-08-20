@@ -10,7 +10,11 @@ See `docs/PRD-and-Architecture.md` for the full spec and
 pip install -e ".[dev]"
 cp .env.example .env   # fill in your keys
 python scripts/health_check.py
+python -m bot.main
 ```
+
+**`docs/SETUP.md` walks through every account and key step by step** — BotFather,
+Supabase, the three API keys, and what to send the bot to check it works.
 
 ## Running the tests
 
