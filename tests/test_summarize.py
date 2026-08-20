@@ -135,3 +135,43 @@ async def test_summarize_title_is_widget_safe_length():
     result = await summarize(client, "entertainment", "transcript")
 
     assert len(result.title) <= 60
+
+
+async def test_summarize_sends_video_when_media_present():
+    from pipeline.media import MediaPayload
+
+    client = _mock_client(
+        {
+            "title": "3 AI tools for slides",
+            "is_time_sensitive": False,
+            "headline": "3 AI tools for slides",
+            "items": [{"point": "Gamma", "detail": "shown on screen at 0:14"}],
+        }
+    )
+
+    result = await summarize(
+        client,
+        "listicle",
+        "caption text",
+        media=MediaPayload(data=b"videobytes", mime_type="video/mp4"),
+    )
+
+    assert result.content["items"][0]["point"] == "Gamma"
+    contents = client.aio.models.generate_content.await_args.kwargs["contents"]
+    parts = contents[0].parts
+    assert parts[0].inline_data.data == b"videobytes"
+    assert parts[0].inline_data.mime_type == "video/mp4"
+    assert "caption text" in parts[1].text
+
+
+async def test_summarize_without_media_sends_text_only():
+    client = _mock_client(
+        {"title": "t", "is_time_sensitive": False, "headline": "h", "items": []}
+    )
+
+    await summarize(client, "listicle", "just a transcript")
+
+    contents = client.aio.models.generate_content.await_args.kwargs["contents"]
+    parts = contents[0].parts
+    assert parts[0].inline_data is None
+    assert parts[0].text == "just a transcript"

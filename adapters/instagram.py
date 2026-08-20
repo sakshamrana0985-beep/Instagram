@@ -8,8 +8,9 @@ adapter call always does real work.
 
 No transcript is produced here. Instagram reels frequently carry their
 information as on-screen text over music, so audio transcription is the
-wrong tool; downstream (pipeline/summarize.py) passes media_url straight
-to Gemini for video understanding when transcript is empty, per PRD §11.
+wrong tool; the pipeline fetches media_url into memory and passes the video
+to Gemini when transcript is empty (pipeline/media.py, pipeline/process.py),
+per PRD §11. Groq Whisper is the fallback below that, not the default.
 """
 from __future__ import annotations
 

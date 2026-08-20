@@ -21,7 +21,9 @@ from google import genai
 from adapters.registry import get_adapter
 from pipeline.classify import classify
 from pipeline.embed import embed
+from pipeline.media import fetch_media
 from pipeline.summarize import summarize
+from pipeline.transcribe import transcribe
 from storage import db
 from storage.models import Item
 
@@ -59,6 +61,7 @@ async def process_url(
     url: str,
     user_id: UUID,
     apify_token: str | None = None,
+    groq_api_key: str | None = None,
 ) -> Item:
     h = url_hash(url)
     item_id = uuid4()
@@ -90,6 +93,15 @@ async def process_url(
         return await db.upsert_item(pool, item)
 
     text = source.transcript or source.caption or ""
+
+    # No captions to work from: pull the media into memory so the summarize step
+    # can read on-screen text. Classification stays text-only — running the cheap
+    # gate on video would undo the cost model (PRD §8 cost-control lever 1).
+    media = None
+    if not source.transcript and source.media_url:
+        t0 = time.monotonic()
+        media = await fetch_media(source.media_url)
+        _log_stage("media", time.monotonic() - t0, fetched=media is not None)
 
     t0 = time.monotonic()
     try:
@@ -139,8 +151,21 @@ async def process_url(
         return saved
 
     t0 = time.monotonic()
+    transcript = source.transcript
     try:
-        summary_result = await summarize(gemini_client, classification.content_type, text)
+        try:
+            summary_result = await summarize(gemini_client, classification.content_type, text, media=media)
+        except Exception as video_exc:  # noqa: BLE001
+            # Video understanding failed (unsupported codec, oversized request,
+            # model error). Whisper hears speech but not on-screen text, so it is
+            # a fallback, never the default — PRD §8.
+            if media is None:
+                raise
+            _log_stage("summarize_video", time.monotonic() - t0, status="failed", error=str(video_exc))
+            transcript = await transcribe(groq_api_key, media) or transcript
+            summary_result = await summarize(
+                gemini_client, classification.content_type, transcript or text
+            )
         embedding = await embed(gemini_client, summary_result.title, summary_result.content, classification.topics)
     except Exception as exc:  # noqa: BLE001
         _log_stage("summarize_embed", time.monotonic() - t0, status="failed", error=str(exc))
@@ -173,7 +198,7 @@ async def process_url(
         is_time_sensitive=summary_result.is_time_sensitive,
         title=summary_result.title,
         summary=summary_result.content,
-        raw_transcript=source.transcript,
+        raw_transcript=transcript,
         topics=classification.topics,
         embedding=embedding,
         saved_at=now,
@@ -197,7 +222,14 @@ async def _main() -> int:
     pool = await db.get_pool(settings.supabase_db_url)
     client = genai.Client(api_key=settings.gemini_api_key)
 
-    item = await process_url(pool, client, args.url, UUID(args.user), apify_token=settings.apify_token)
+    item = await process_url(
+        pool,
+        client,
+        args.url,
+        UUID(args.user),
+        apify_token=settings.apify_token,
+        groq_api_key=settings.groq_api_key,
+    )
     print(item.model_dump_json(indent=2))
     return 0
 

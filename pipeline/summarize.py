@@ -1,6 +1,12 @@
 """Step 2 of the AI pipeline (PRD §11): templated extraction, one prompt
 per content_type, each returning a distinct structured schema. Never a
 generic "summarize this" — that's how you lose "80CCD(1B)".
+
+Takes optional in-memory media. Many reels never speak their list items
+aloud — they display them on screen over music — so transcript-in returns
+nothing useful and video-in is the only way to read them (PRD §11, prompt
+rule 2). The media is a plain `MediaPayload` from whichever adapter
+produced it; this module stays platform-agnostic (CLAUDE.md rule 1).
 """
 from __future__ import annotations
 
@@ -10,6 +16,8 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from pipeline.media import MediaPayload
 
 MODEL = "gemini-2.0-flash"
 
@@ -172,8 +180,32 @@ class SummaryResult(BaseModel):
         return self.content
 
 
+def _build_contents(text: str, media: MediaPayload | None) -> list:
+    """Video first, then whatever text we have. An empty caption is still worth
+    sending as a label, but never as the only input when media is available."""
+    parts: list = []
+    if media is not None:
+        parts.append(types.Part.from_bytes(data=media.data, mime_type=media.mime_type))
+        parts.append(
+            types.Part.from_text(
+                text=(
+                    "Read the on-screen text in the video as well as the speech. "
+                    f"Post caption (may be empty): {text}"
+                )
+            )
+        )
+    else:
+        parts.append(types.Part.from_text(text=text))
+    return [types.Content(role="user", parts=parts)]
+
+
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=1, max=8))
-async def summarize(client: genai.Client, content_type: ContentType, text: str) -> SummaryResult:
+async def summarize(
+    client: genai.Client,
+    content_type: ContentType,
+    text: str,
+    media: MediaPayload | None = None,
+) -> SummaryResult:
     """Templated extraction for one content_type. Raises on repeated API
     failure — callers should catch and mark the item as failed."""
     schema_model = _SCHEMA_BY_TYPE[content_type]
@@ -182,7 +214,7 @@ async def summarize(client: genai.Client, content_type: ContentType, text: str) 
 
     response = await client.aio.models.generate_content(
         model=MODEL,
-        contents=text,
+        contents=_build_contents(text, media),
         config=types.GenerateContentConfig(
             system_instruction=prompt,
             response_mime_type="application/json",

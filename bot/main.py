@@ -68,10 +68,13 @@ async def _process_and_edit(
     pool = context.application.bot_data["pool"]
     client: genai.Client = context.application.bot_data["gemini_client"]
     apify_token: str = context.application.bot_data["apify_token"]
+    groq_api_key: str = context.application.bot_data["groq_api_key"]
 
     try:
         user = await db.get_or_create_user(pool, telegram_user_id)
-        item = await process_url(pool, client, url, user.id, apify_token=apify_token)
+        item = await process_url(
+            pool, client, url, user.id, apify_token=apify_token, groq_api_key=groq_api_key
+        )
         text = render_item(item)
     except Exception:  # noqa: BLE001 — a pipeline failure must never crash the bot
         logger.exception("failed to process url=%s", url)
@@ -166,6 +169,7 @@ def build_application(settings: Settings, pool, gemini_client: genai.Client) -> 
     application.bot_data["pool"] = pool
     application.bot_data["gemini_client"] = gemini_client
     application.bot_data["apify_token"] = settings.apify_token
+    application.bot_data["groq_api_key"] = settings.groq_api_key
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("search", search_command))
