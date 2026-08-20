@@ -13,6 +13,7 @@ import logging
 
 from groq import AsyncGroq
 
+from pipeline.llm_log import log_call
 from pipeline.media import MediaPayload
 
 logger = logging.getLogger("recall.transcribe")
@@ -34,11 +35,12 @@ async def transcribe(api_key: str | None, media: MediaPayload | None) -> str | N
     suffix = "mp4" if media.mime_type.startswith("video/") else "m4a"
     try:
         client = AsyncGroq(api_key=api_key)
-        response = await client.audio.transcriptions.create(
-            file=(f"media.{suffix}", media.data),
-            model=MODEL,
-            response_format="text",
-        )
+        with log_call(MODEL, "transcribe", bytes=len(media.data)):
+            response = await client.audio.transcriptions.create(
+                file=(f"media.{suffix}", media.data),
+                model=MODEL,
+                response_format="text",
+            )
     except Exception as exc:  # noqa: BLE001 — fallback failures are non-fatal
         logger.info("groq transcription failed error=%s", exc)
         return None
@@ -47,5 +49,4 @@ async def transcribe(api_key: str | None, media: MediaPayload | None) -> str | N
     text = (text or "").strip()
     if not text:
         return None
-    logger.info("groq transcription ok model=%s chars=%d", MODEL, len(text))
     return text

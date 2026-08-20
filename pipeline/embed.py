@@ -6,6 +6,8 @@ from google import genai
 from google.genai import types
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from pipeline.llm_log import log_call
+
 MODEL = "gemini-embedding-001"
 DIMENSIONS = 768
 
@@ -42,9 +44,11 @@ async def embed_query(client: genai.Client, query: str) -> list[float]:
 
 
 async def _embed_text(client: genai.Client, text: str) -> list[float]:
-    response = await client.aio.models.embed_content(
-        model=MODEL,
-        contents=text,
-        config=types.EmbedContentConfig(output_dimensionality=DIMENSIONS),
-    )
+    with log_call(MODEL, "embed", chars=len(text)) as logged:
+        response = await client.aio.models.embed_content(
+            model=MODEL,
+            contents=text,
+            config=types.EmbedContentConfig(output_dimensionality=DIMENSIONS),
+        )
+        logged.append(response)
     return response.embeddings[0].values

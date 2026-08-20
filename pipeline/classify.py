@@ -11,6 +11,8 @@ from google.genai import types
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from pipeline.llm_log import log_call
+
 ContentType = Literal["listicle", "tutorial", "recipe", "explainer", "news", "entertainment"]
 
 MODEL = "gemini-2.0-flash-lite"
@@ -54,14 +56,16 @@ _RESPONSE_SCHEMA = {
 async def classify(client: genai.Client, text: str) -> ClassificationResult:
     """Classify a caption/transcript. Raises on repeated API failure — callers
     should catch and mark the item as failed rather than let this crash a handler."""
-    response = await client.aio.models.generate_content(
-        model=MODEL,
-        contents=text,
-        config=types.GenerateContentConfig(
-            system_instruction=_SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            response_schema=_RESPONSE_SCHEMA,
-            temperature=0.0,
-        ),
-    )
+    with log_call(MODEL, "classify") as logged:
+        response = await client.aio.models.generate_content(
+            model=MODEL,
+            contents=text,
+            config=types.GenerateContentConfig(
+                system_instruction=_SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                response_schema=_RESPONSE_SCHEMA,
+                temperature=0.0,
+            ),
+        )
+        logged.append(response)
     return ClassificationResult.model_validate_json(response.text)

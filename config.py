@@ -15,6 +15,9 @@ REQUIRED_VARS = [
     "GROQ_API_KEY",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_KEY",
+    # The bot connects with asyncpg, not PostgREST — without this it starts and
+    # then fails on the first message with an opaque connection error.
+    "SUPABASE_DB_URL",
     "APIFY_TOKEN",
 ]
 
@@ -25,7 +28,7 @@ class Settings(BaseModel):
     groq_api_key: str
     supabase_url: str
     supabase_service_key: str
-    supabase_db_url: str = ""
+    supabase_db_url: str
     apify_token: str
 
     weekly_quota_free: int = 15
@@ -46,7 +49,7 @@ def load_settings() -> Settings:
             groq_api_key=os.environ["GROQ_API_KEY"],
             supabase_url=os.environ["SUPABASE_URL"],
             supabase_service_key=os.environ["SUPABASE_SERVICE_KEY"],
-            supabase_db_url=os.environ.get("SUPABASE_DB_URL", ""),
+            supabase_db_url=os.environ["SUPABASE_DB_URL"],
             apify_token=os.environ["APIFY_TOKEN"],
         )
     except ValidationError as exc:

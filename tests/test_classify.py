@@ -62,3 +62,24 @@ async def test_classify_passes_text_and_system_prompt_to_model():
     _, kwargs = client.aio.models.generate_content.call_args
     assert kwargs["contents"] == "15 minute garlic butter shrimp pasta"
     assert kwargs["config"].response_mime_type == "application/json"
+
+
+async def test_classify_logs_model_tokens_and_cost(caplog):
+    """CLAUDE.md: every LLM call logs model, tokens, latency, cost estimate."""
+    import logging
+    from types import SimpleNamespace
+
+    client = _mock_client(
+        {"content_type": "listicle", "is_informational": True, "topics": ["tax"], "confidence": 0.9}
+    )
+    client.aio.models.generate_content.return_value.usage_metadata = SimpleNamespace(
+        prompt_token_count=800, candidates_token_count=40
+    )
+
+    with caplog.at_level(logging.INFO, logger="recall.llm"):
+        await classify(client, "some caption")
+
+    record = caplog.records[-1].getMessage()
+    assert "model=gemini-2.0-flash-lite" in record
+    assert "input_tokens=800" in record
+    assert "est_cost_usd=" in record

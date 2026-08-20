@@ -17,6 +17,7 @@ from google.genai import types
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from pipeline.llm_log import log_call
 from pipeline.media import MediaPayload
 
 MODEL = "gemini-2.0-flash"
@@ -212,16 +213,18 @@ async def summarize(
     envelope_schema = _ENVELOPE_SCHEMAS[content_type]
     prompt = _SHARED_RULES + "\n" + _TYPE_INSTRUCTIONS[content_type]
 
-    response = await client.aio.models.generate_content(
-        model=MODEL,
-        contents=_build_contents(text, media),
-        config=types.GenerateContentConfig(
-            system_instruction=prompt,
-            response_mime_type="application/json",
-            response_schema=envelope_schema,
-            temperature=0.0,
-        ),
-    )
+    with log_call(MODEL, "summarize", content_type=content_type, video=media is not None) as logged:
+        response = await client.aio.models.generate_content(
+            model=MODEL,
+            contents=_build_contents(text, media),
+            config=types.GenerateContentConfig(
+                system_instruction=prompt,
+                response_mime_type="application/json",
+                response_schema=envelope_schema,
+                temperature=0.0,
+            ),
+        )
+        logged.append(response)
 
     import json
 

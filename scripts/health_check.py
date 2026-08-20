@@ -69,6 +69,44 @@ def check_supabase(url: str, service_key: str) -> CheckResult:
         return CheckResult("Supabase", False, message)
 
 
+def check_database(dsn: str) -> CheckResult:
+    """The direct asyncpg path the bot actually uses, plus the pgvector
+    extension and the migrated schema — Supabase being up says nothing
+    about whether migrations/0001_init.sql was ever applied."""
+    import asyncio
+
+    async def _check() -> CheckResult:
+        import asyncpg
+
+        try:
+            conn = await asyncpg.connect(dsn, timeout=10)
+        except Exception as exc:  # noqa: BLE001
+            return CheckResult("Postgres", False, str(exc))
+        try:
+            has_vector = await conn.fetchval(
+                "select exists (select 1 from pg_extension where extname = 'vector')"
+            )
+            tables = await conn.fetchval(
+                """
+                select count(*) from information_schema.tables
+                where table_schema = 'public'
+                  and table_name in ('users', 'items', 'url_cache', 'search_events', 'item_open_events')
+                """
+            )
+        finally:
+            await conn.close()
+
+        if not has_vector:
+            return CheckResult("Postgres", False, "pgvector extension missing — run migrations/0001_init.sql")
+        if tables < 5:
+            return CheckResult(
+                "Postgres", False, f"only {tables}/5 tables present — run migrations/0001_init.sql"
+            )
+        return CheckResult("Postgres", True, "schema applied, pgvector enabled")
+
+    return asyncio.run(_check())
+
+
 def check_apify(token: str) -> CheckResult:
     try:
         from apify_client import ApifyClient
@@ -88,6 +126,7 @@ def main() -> int:
         check_gemini(settings.gemini_api_key),
         check_groq(settings.groq_api_key),
         check_supabase(settings.supabase_url, settings.supabase_service_key),
+        check_database(settings.supabase_db_url),
         check_apify(settings.apify_token),
     ]
 
