@@ -1,4 +1,6 @@
-"""Verifies all five external services are reachable with the configured keys.
+"""Verifies every external service is reachable with the configured keys, and
+catches the credential mix-ups that otherwise surface as an opaque error on the
+first forwarded link.
 
 Run: python scripts/health_check.py
 """
@@ -6,6 +8,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
+from urllib.parse import urlparse
 
 sys.path.insert(0, ".")
 
@@ -54,7 +57,42 @@ def check_groq(api_key: str) -> CheckResult:
         return CheckResult("Groq", False, str(exc))
 
 
+def inspect_service_key(service_key: str) -> str | None:
+    """Supabase issues two API keys and only one of them can bypass row-level
+    security. Returns a problem description, or None if the key looks right."""
+    if service_key.startswith("sb_publishable_") or service_key.startswith("eyJ") and '"anon"' in service_key:
+        return (
+            "this is the publishable/anon key — copy the secret key instead "
+            "(Project Settings > API Keys, the one you have to click to reveal)"
+        )
+    return None
+
+
+def inspect_db_url(dsn: str) -> str | None:
+    """Catches the two ways the Postgres DSN is usually wrong: a placeholder or
+    an API key pasted where the database password belongs."""
+    # Checked before parsing: urlparse reads brackets as an IPv6 literal and
+    # raises rather than handing back the password.
+    if "[" in dsn or "]" in dsn:
+        return "still contains [...] — replace the placeholder, brackets included"
+
+    password = urlparse(dsn).password or ""
+    if password.startswith(("sb_publishable_", "sb_secret_", "eyJ")):
+        return (
+            "the password here is a Supabase API key. This field wants the "
+            "database password you set when you created the project — reset it "
+            "under Project Settings > Database if you don't have it"
+        )
+    if not password:
+        return "no password in the connection string"
+    return None
+
+
 def check_supabase(url: str, service_key: str) -> CheckResult:
+    problem = inspect_service_key(service_key)
+    if problem:
+        return CheckResult("Supabase", False, problem)
+
     try:
         from supabase import create_client
 
@@ -75,13 +113,29 @@ def check_database(dsn: str) -> CheckResult:
     about whether migrations/0001_init.sql was ever applied."""
     import asyncio
 
+    problem = inspect_db_url(dsn)
+    if problem:
+        return CheckResult("Postgres", False, problem)
+
     async def _check() -> CheckResult:
         import asyncpg
 
         try:
             conn = await asyncpg.connect(dsn, timeout=10)
         except Exception as exc:  # noqa: BLE001
-            return CheckResult("Postgres", False, str(exc))
+            message = str(exc)
+            # db.<ref>.supabase.co resolves to IPv6 only. Networks without IPv6
+            # fail here with an address-family or unreachable error, and the fix
+            # is the pooler host rather than anything about the credentials.
+            if urlparse(dsn).hostname and str(urlparse(dsn).hostname).startswith("db."):
+                if "Address family" in message or "unreachable" in message or "Connect call failed" in message:
+                    return CheckResult(
+                        "Postgres",
+                        False,
+                        "cannot reach the direct connection (it is IPv6-only) — use the "
+                        "Session pooler URI from Project Settings > Database instead",
+                    )
+            return CheckResult("Postgres", False, message)
         try:
             has_vector = await conn.fetchval(
                 "select exists (select 1 from pg_extension where extname = 'vector')"

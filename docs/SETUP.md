@@ -26,12 +26,23 @@ roughly 2,000 Instagram reels.
 3. Left sidebar → **SQL Editor** → **New query**. Open `migrations/0001_init.sql`
    from this repo, copy the whole file, paste it in, hit **Run**. This creates
    the tables. You should see "Success".
-4. Left sidebar → **Project Settings → API**. Copy:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role** key (the secret one, not `anon`) → `SUPABASE_SERVICE_KEY`
-5. **Project Settings → Database → Connection string → URI**. Copy it and
-   replace `[YOUR-PASSWORD]` with the password from step 2 →
-   `SUPABASE_DB_URL`.
+4. Left sidebar → **Project Settings → API Keys**. Supabase gives you two, and
+   they are not interchangeable:
+   - `sb_publishable_...` — safe to expose, **not** the one we want
+   - `sb_secret_...` — the one you have to click to reveal → `SUPABASE_SERVICE_KEY`
+
+   The **Project URL** (Settings → API) → `SUPABASE_URL`.
+5. **Project Settings → Database → Connection string**. Two traps here:
+   - The password in that string is the **database password from step 2** —
+     *not* any of the API keys above. Different thing entirely. Forgot it?
+     Reset it on that same page.
+   - Delete the square brackets along with the placeholder. `[hunter2]` is
+     wrong, `hunter2` is right.
+   - Prefer the **Session pooler** URI (`...pooler.supabase.com`) over the
+     direct one (`db.<ref>.supabase.co`). The direct host is IPv6-only, so on a
+     network without IPv6 it fails with a confusing "network unreachable".
+
+   That string → `SUPABASE_DB_URL`.
 
 ## Step 3 — Get the three API keys (10 minutes)
 
@@ -67,8 +78,10 @@ You want six `[OK ]` lines: Telegram, Gemini, Groq, Supabase, Postgres, Apify.
 
 Common failures:
 - **Postgres FAIL "run migrations"** — step 2.3 didn't run. Redo it.
-- **Postgres FAIL "password authentication"** — you left `[YOUR-PASSWORD]` in
-  `SUPABASE_DB_URL`, or typed the wrong password.
+- **Postgres FAIL "the password here is a Supabase API key"** — you pasted a
+  `sb_...` key where the database password goes. See step 2.5.
+- **Postgres FAIL "IPv6-only"** — switch to the Session pooler URI.
+- **Supabase FAIL "this is the publishable/anon key"** — grab the secret one.
 - **Telegram FAIL** — token copied with a missing character.
 - **Apify FAIL** — token from the wrong account or not yet activated.
 
