@@ -20,7 +20,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 from pipeline.llm_log import log_call
 from pipeline.media import MediaPayload
 
-MODEL = "gemini-2.0-flash"
+MODEL = "gemini-3.5-flash"
 
 ContentType = Literal["listicle", "tutorial", "recipe", "explainer", "news", "entertainment"]
 

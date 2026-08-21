@@ -15,7 +15,7 @@ from pipeline.llm_log import log_call
 
 ContentType = Literal["listicle", "tutorial", "recipe", "explainer", "news", "entertainment"]
 
-MODEL = "gemini-2.0-flash-lite"
+MODEL = "gemini-3.5-flash-lite"
 
 _SYSTEM_PROMPT = """You classify social video captions/transcripts for a save-and-retrieve app.
 

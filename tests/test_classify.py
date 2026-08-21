@@ -80,6 +80,6 @@ async def test_classify_logs_model_tokens_and_cost(caplog):
         await classify(client, "some caption")
 
     record = caplog.records[-1].getMessage()
-    assert "model=gemini-2.0-flash-lite" in record
+    assert "model=gemini-3.5-flash-lite" in record
     assert "input_tokens=800" in record
     assert "est_cost_usd=" in record
