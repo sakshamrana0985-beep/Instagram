@@ -38,6 +38,11 @@ roughly 2,000 Instagram reels.
      Reset it on that same page.
    - Delete the square brackets along with the placeholder. `[hunter2]` is
      wrong, `hunter2` is right.
+   - If the password contains `@`, `/`, `?` or `#`, percent-encode those
+     characters *inside the connection string* — `@`→`%40`, `/`→`%2F`,
+     `?`→`%3F`, `#`→`%23`. A URI reads them as syntax otherwise and you get a
+     "host not found" for a host you never typed. Your actual password is
+     unchanged; only the copy inside `SUPABASE_DB_URL` is encoded.
    - Prefer the **Session pooler** URI (`...pooler.supabase.com`) over the
      direct one (`db.<ref>.supabase.co`). The direct host is IPv6-only, so on a
      network without IPv6 it fails with a confusing "network unreachable".

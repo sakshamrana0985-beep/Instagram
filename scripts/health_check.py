@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 sys.path.insert(0, ".")
 
@@ -68,15 +68,35 @@ def inspect_service_key(service_key: str) -> str | None:
     return None
 
 
+# Characters a connection URI reads as syntax rather than as part of a password.
+_URI_RESERVED = "@/?#"
+
+
 def inspect_db_url(dsn: str) -> str | None:
-    """Catches the two ways the Postgres DSN is usually wrong: a placeholder or
-    an API key pasted where the database password belongs."""
+    """Catches the ways the Postgres DSN is usually wrong: a placeholder, an API
+    key pasted where the database password belongs, or a generated password
+    containing characters the URI format reserves."""
     # Checked before parsing: urlparse reads brackets as an IPv6 literal and
     # raises rather than handing back the password.
     if "[" in dsn or "]" in dsn:
         return "still contains [...] — replace the placeholder, brackets included"
 
-    password = urlparse(dsn).password or ""
+    # Parsed by hand rather than with urlparse: an unencoded @ or / in the
+    # password is exactly what makes urlparse read the DSN wrongly, so asking it
+    # first would hide the problem being looked for.
+    _, _, after_scheme = dsn.partition("://")
+    userinfo, _, _host = after_scheme.rpartition("@")
+    _user, _, password = userinfo.partition(":")
+
+    reserved = sorted({c for c in password if c in _URI_RESERVED})
+    if reserved:
+        pairs = ", ".join(f"{c} -> {quote(c, safe='')}" for c in reserved)
+        return (
+            f"the password contains {' '.join(reserved)} , which a connection URI "
+            f"reads as syntax. Percent-encode it in SUPABASE_DB_URL ({pairs}) — "
+            "the password itself does not change"
+        )
+
     if password.startswith(("sb_publishable_", "sb_secret_", "eyJ")):
         return (
             "the password here is a Supabase API key. This field wants the "

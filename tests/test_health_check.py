@@ -44,3 +44,17 @@ def test_valid_dsn_passes():
 
 def test_pooler_dsn_passes():
     assert inspect_db_url("postgresql://postgres.abcdef:hunter2@aws-0-ap-south-1.pooler.supabase.com:5432/postgres") is None
+
+
+@pytest.mark.parametrize("password,expected", [("a@b", "@ -> %40"), ("a/b", "/ -> %2F"), ("a?b", "? -> %3F")])
+def test_reserved_characters_in_the_password_are_caught(password, expected):
+    """Supabase generates passwords containing @ / ? — pasted raw, the DSN
+    parses as a different host entirely."""
+    problem = inspect_db_url(f"postgresql://postgres:{password}@db.x.supabase.co:5432/postgres")
+
+    assert problem is not None
+    assert expected in problem
+
+
+def test_percent_encoded_password_passes():
+    assert inspect_db_url("postgresql://postgres:42%40%3F5%2FfJupmPuQ3@db.x.supabase.co:5432/postgres") is None
