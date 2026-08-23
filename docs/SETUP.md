@@ -14,10 +14,30 @@ roughly 2,000 Instagram reels.
 Collect the seven values below (steps 1-3), then run **one command** from the
 project folder and answer its questions:
 
-```bash
-bash setup.sh          # Mac / Linux
-.\setup.ps1            # Windows PowerShell
+**Windows (PowerShell)** — one line at a time. The first line matters: PowerShell
+opens in a protected Windows folder you are not allowed to write to.
+
+```powershell
+cd $HOME
+git clone https://github.com/sakshamrana0985-beep/Instagram.git
+cd Instagram
+git checkout claude/testing-setup-97szpv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+.\setup.ps1
 ```
+
+**Mac / Linux (Terminal)**
+
+```bash
+cd ~
+git clone https://github.com/sakshamrana0985-beep/Instagram.git
+cd Instagram
+git checkout claude/testing-setup-97szpv
+bash setup.sh
+```
+
+Coming back later? `cd ~/Instagram` (or `cd $HOME\Instagram` on Windows) and run
+the setup command again — it picks up where it left off.
 
 It installs everything into an isolated environment, asks for each key in turn,
 tells you immediately if one is wrong, and offers to start the bot. Re-running
