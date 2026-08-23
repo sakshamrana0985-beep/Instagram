@@ -24,26 +24,53 @@ function Test-PythonVersion {
     return ($LASTEXITCODE -eq 0)
 }
 
-function Find-Python {
-    # Ordered best-first. "py" with no version argument uses whatever the
-    # launcher considers current, which is what a fresh install leaves behind.
-    $candidates = @(
-        @{ Name = "py";      Args = @() },
-        @{ Name = "py";      Args = @("-3") },
-        @{ Name = "python";  Args = @() },
-        @{ Name = "python3"; Args = @() }
-    )
+function Get-PythonCandidates {
+    # Everything plausible, in preference order. Nothing is excluded up front:
+    # the Microsoft Store stub lives in WindowsApps, but so does the py.exe that
+    # the official Python install manager ships, so the only safe way to tell
+    # them apart is to ask each one its version and believe the exit code.
+    $candidates = @()
 
-    foreach ($candidate in $candidates) {
-        $cmd = Get-Command $candidate.Name -ErrorAction SilentlyContinue
-        if ($null -eq $cmd) { continue }
-
-        # The Microsoft Store alias is a stub that only opens the Store.
-        if ($cmd.Source -like "*\WindowsApps\*") { continue }
-
-        if (Test-PythonVersion -Exe $cmd.Source -PrefixArgs $candidate.Args) {
-            return @{ Exe = $cmd.Source; Args = $candidate.Args }
+    $launcher = Get-Command py -ErrorAction SilentlyContinue
+    if ($null -ne $launcher) {
+        foreach ($ver in @("", "-3", "-3.14", "-3.13", "-3.12", "-3.11")) {
+            $verArgs = @()
+            if ($ver -ne "") { $verArgs = @($ver) }
+            $candidates += @{ Exe = $launcher.Source; Args = $verArgs; Label = "py $ver".Trim() }
         }
+    }
+
+    foreach ($name in @("python", "python3", "python3.14", "python3.13", "python3.12", "python3.11")) {
+        foreach ($cmd in @(Get-Command $name -All -ErrorAction SilentlyContinue)) {
+            if ($cmd.Source) {
+                $candidates += @{ Exe = $cmd.Source; Args = @(); Label = $cmd.Source }
+            }
+        }
+    }
+
+    # Installed but not on PATH - common with the install manager and the
+    # classic installer when "Add to PATH" was missed.
+    $globs = @(
+        (Join-Path $env:LOCALAPPDATA "Python\bin\python3*.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\Python\Python3*\python.exe"),
+        (Join-Path $env:ProgramFiles "Python3*\python.exe")
+    )
+    foreach ($glob in $globs) {
+        foreach ($found in @(Get-ChildItem $glob -ErrorAction SilentlyContinue)) {
+            $candidates += @{ Exe = $found.FullName; Args = @(); Label = $found.FullName }
+        }
+    }
+
+    return $candidates
+}
+
+function Find-Python {
+    $script:Attempted = @()
+    foreach ($candidate in Get-PythonCandidates) {
+        if (Test-PythonVersion -Exe $candidate.Exe -PrefixArgs $candidate.Args) {
+            return $candidate
+        }
+        $script:Attempted += $candidate.Label
     }
     return $null
 }
@@ -61,6 +88,11 @@ if ($null -eq $python) {
     Write-Host ""
     Write-Host "If you have not installed it: https://www.python.org/downloads/"
     Write-Host "and tick 'Add python.exe to PATH' on the installer's first screen."
+    if ($script:Attempted.Count -gt 0) {
+        Write-Host ""
+        Write-Host "Tried, and none reported version 3.11 or newer:"
+        foreach ($attempt in $script:Attempted) { Write-Host "  $attempt" }
+    }
     exit 1
 }
 
