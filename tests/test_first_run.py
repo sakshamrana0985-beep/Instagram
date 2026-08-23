@@ -132,3 +132,27 @@ def test_the_right_value_at_the_right_question_passes(var, value):
 
 def test_a_shapeless_telegram_token_is_rejected():
     assert "digits, a colon" in (prevalidate("TELEGRAM_BOT_TOKEN", "just-some-text") or "")
+
+
+def test_a_wrong_saved_value_is_reported_not_silently_kept(monkeypatch, capsys):
+    """Pressing Enter at a prompt showing a bad value used to keep it forever."""
+    from scripts.first_run import STEPS, ask_for
+
+    telegram_step = next(s for s in STEPS if s.var == "TELEGRAM_BOT_TOKEN")
+    answers = iter(["", "8881269597:AAFSw0QUSWXpZ1X0RgVIxjl3okMABrn3ZF"])
+    monkeypatch.setattr("builtins.input", lambda *_: next(answers))
+
+    # The saved value is a Groq key sitting in the Telegram slot.
+    result = ask_for(telegram_step, "gsk_K96LxhelExampleValueHere")
+
+    assert result.startswith("8881269597:")
+    assert "saved value is wrong" in capsys.readouterr().out
+
+
+def test_a_correct_saved_value_is_kept_on_enter(monkeypatch):
+    from scripts.first_run import STEPS, ask_for
+
+    step = next(s for s in STEPS if s.var == "APIFY_TOKEN")
+    monkeypatch.setattr("builtins.input", lambda *_: "")
+
+    assert ask_for(step, "apify_api_existing") == "apify_api_existing"

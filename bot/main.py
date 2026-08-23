@@ -16,6 +16,7 @@ from uuid import UUID
 from google import genai
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ParseMode
+from telegram.error import InvalidToken
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -213,14 +214,26 @@ async def _main() -> None:
     gemini_client = genai.Client(api_key=settings.gemini_api_key)
 
     application = build_application(settings, pool, gemini_client)
-    async with application:
-        await application.start()
-        await application.updater.start_polling()
-        try:
-            await asyncio.Event().wait()
-        finally:
-            await application.updater.stop()
-            await application.stop()
+    try:
+        async with application:
+            await application.start()
+            await application.updater.start_polling()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                await application.updater.stop()
+                await application.stop()
+    except InvalidToken:
+        # Telegram rejects a malformed or revoked token at startup. That is a
+        # configuration mistake, so say which value is wrong rather than
+        # printing forty lines of library traceback.
+        print(
+            "\nTelegram rejected the bot token in TELEGRAM_BOT_TOKEN.\n"
+            "It should look like 12345678:AAF... - get it from @BotFather on Telegram.\n"
+            "Fix it with:  python scripts/first_run.py\n",
+            file=sys.stderr,
+        )
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

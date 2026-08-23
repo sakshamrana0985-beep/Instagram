@@ -253,9 +253,17 @@ def ask_for(step: Step, existing: str) -> str:
     print(f"  {DIM}Looks like: {step.looks_like}{RESET}")
     while True:
         if existing:
-            raw = input(f"  Currently {mask(existing)}. Enter to keep, or paste a new one: ").strip()
-            if not raw:
-                return existing
+            # A saved value gets the same scrutiny as a new one. Otherwise a
+            # wrong value already in .env survives every re-run, because the
+            # natural thing to do at a prompt showing it is press Enter.
+            saved_problem = prevalidate(step.var, existing)
+            if saved_problem is not None:
+                print(f"  {YELLOW}The saved value is wrong: {saved_problem}{RESET}")
+                raw = input("  Paste the correct one: ")
+            else:
+                raw = input(f"  Currently {mask(existing)}. Enter to keep, or paste a new one: ").strip()
+                if not raw:
+                    return existing
         else:
             raw = input("  Paste it here: ")
 
