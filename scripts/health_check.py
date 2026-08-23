@@ -62,7 +62,7 @@ def inspect_service_key(service_key: str) -> str | None:
     security. Returns a problem description, or None if the key looks right."""
     if service_key.startswith("sb_publishable_") or service_key.startswith("eyJ") and '"anon"' in service_key:
         return (
-            "this is the publishable/anon key — copy the secret key instead "
+            "this is the publishable/anon key - copy the secret key instead "
             "(Project Settings > API Keys, the one you have to click to reveal)"
         )
     return None
@@ -79,7 +79,7 @@ def inspect_db_url(dsn: str) -> str | None:
     # Checked before parsing: urlparse reads brackets as an IPv6 literal and
     # raises rather than handing back the password.
     if "[" in dsn or "]" in dsn:
-        return "still contains [...] — replace the placeholder, brackets included"
+        return "still contains [...] - replace the placeholder, brackets included"
 
     # Parsed by hand rather than with urlparse: an unencoded @ or / in the
     # password is exactly what makes urlparse read the DSN wrongly, so asking it
@@ -93,14 +93,14 @@ def inspect_db_url(dsn: str) -> str | None:
         pairs = ", ".join(f"{c} -> {quote(c, safe='')}" for c in reserved)
         return (
             f"the password contains {' '.join(reserved)} , which a connection URI "
-            f"reads as syntax. Percent-encode it in SUPABASE_DB_URL ({pairs}) — "
+            f"reads as syntax. Percent-encode it in SUPABASE_DB_URL ({pairs}) - "
             "the password itself does not change"
         )
 
     if password.startswith(("sb_publishable_", "sb_secret_", "eyJ")):
         return (
             "the password here is a Supabase API key. This field wants the "
-            "database password you set when you created the project — reset it "
+            "database password you set when you created the project - reset it "
             "under Project Settings > Database if you don't have it"
         )
     if not password:
@@ -129,7 +129,7 @@ def check_supabase(url: str, service_key: str) -> CheckResult:
 
 def check_database(dsn: str) -> CheckResult:
     """The direct asyncpg path the bot actually uses, plus the pgvector
-    extension and the migrated schema — Supabase being up says nothing
+    extension and the migrated schema - Supabase being up says nothing
     about whether migrations/0001_init.sql was ever applied."""
     import asyncio
 
@@ -152,7 +152,7 @@ def check_database(dsn: str) -> CheckResult:
                     return CheckResult(
                         "Postgres",
                         False,
-                        "cannot reach the direct connection (it is IPv6-only) — use the "
+                        "cannot reach the direct connection (it is IPv6-only) - use the "
                         "Session pooler URI from Project Settings > Database instead",
                     )
             return CheckResult("Postgres", False, message)
@@ -171,10 +171,10 @@ def check_database(dsn: str) -> CheckResult:
             await conn.close()
 
         if not has_vector:
-            return CheckResult("Postgres", False, "pgvector extension missing — run migrations/0001_init.sql")
+            return CheckResult("Postgres", False, "pgvector extension missing - run migrations/0001_init.sql")
         if tables < 5:
             return CheckResult(
-                "Postgres", False, f"only {tables}/5 tables present — run migrations/0001_init.sql"
+                "Postgres", False, f"only {tables}/5 tables present - run migrations/0001_init.sql"
             )
         return CheckResult("Postgres", True, "schema applied, pgvector enabled")
 

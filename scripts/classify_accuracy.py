@@ -4,8 +4,8 @@ accuracy per class (build plan session 4). Requires a real GEMINI_API_KEY.
   python scripts/classify_accuracy.py
 
 The 20-item set in tests/fixtures/classify_eval_set.json is a starter set
-covering all six content types — swap in real saved transcripts before
-trusting the accuracy number for the ≥85% gate.
+covering all six content types - swap in real saved transcripts before
+trusting the accuracy number for the >=85% gate.
 """
 from __future__ import annotations
 
@@ -72,9 +72,9 @@ async def main() -> int:
 
     gate = 0.85
     if type_accuracy >= gate:
-        print(f"\nPASS — at or above the {gate:.0%} gate.")
+        print(f"\nPASS - at or above the {gate:.0%} gate.")
         return 0
-    print(f"\nBELOW the {gate:.0%} gate — iterate the prompt before proceeding.")
+    print(f"\nBELOW the {gate:.0%} gate - iterate the prompt before proceeding.")
     return 1
 
 

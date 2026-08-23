@@ -4,7 +4,7 @@
 #     bash setup.sh
 #
 # Creates an isolated Python environment, installs what the bot needs, then
-# hands over to the setup wizard. Safe to re-run — it reuses what exists.
+# hands over to the setup wizard. Safe to re-run - it reuses what exists.
 set -euo pipefail
 cd "$(dirname "$0")"
 

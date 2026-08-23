@@ -34,7 +34,28 @@ from scripts.health_check import (  # noqa: E402
 
 ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 
-GREEN, RED, YELLOW, DIM, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[1m", "\033[0m"
+def _colours_supported() -> bool:
+    """The classic Windows PowerShell console renders escape codes literally,
+    turning every line into visible garbage. Windows Terminal and VS Code both
+    announce themselves; anything else on Windows gets plain text."""
+    if os.name != "nt":
+        return sys.stdout.isatty()
+    return bool(os.environ.get("WT_SESSION") or os.environ.get("TERM_PROGRAM"))
+
+
+if _colours_supported():
+    GREEN, RED, YELLOW = "\033[32m", "\033[31m", "\033[33m"
+    DIM, BOLD, RESET = "\033[2m", "\033[1m", "\033[0m"
+else:
+    GREEN = RED = YELLOW = DIM = BOLD = RESET = ""
+
+# A Windows console defaults to a legacy code page that cannot encode every
+# character; replace rather than crash the wizard on an unlucky error message.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(errors="replace")
+    except (AttributeError, ValueError):
+        pass
 
 
 @dataclass
@@ -161,7 +182,7 @@ def prevalidate(var: str, value: str) -> str | None:
         return inspect_service_key(value)
     if var == "SUPABASE_DB_URL":
         if not value.startswith("postgres"):
-            return "that does not look like a connection string — it should start with postgresql://"
+            return "that does not look like a connection string - it should start with postgresql://"
         return inspect_db_url(value)
     if var == "SUPABASE_URL" and not urlparse(value).scheme.startswith("http"):
         return "that should start with https://"
@@ -181,7 +202,7 @@ def run_checks(values: dict[str, str]) -> bool:
         print(f"\n{BOLD}{var}{RESET}")
         try:
             ok = _report(checker(values))
-        except Exception as exc:  # noqa: BLE001 — a checker must never end the wizard
+        except Exception as exc:  # noqa: BLE001 - a checker must never end the wizard
             print(f"  {RED}problem{RESET}: {exc}")
             ok = False
         all_ok = all_ok and ok
@@ -214,7 +235,7 @@ def main() -> int:
     if not args.check:
         print(f"{BOLD}Recall setup{RESET}")
         print("Seven values to collect. Each one says where to find it.")
-        print(f"{DIM}Nothing leaves your computer — they go into a private .env file.{RESET}")
+        print(f"{DIM}Nothing leaves your computer - they go into a private .env file.{RESET}")
         for step in STEPS:
             values[step.var] = ask_for(step, values.get(step.var, ""))
         write_env(values)
@@ -233,7 +254,7 @@ def main() -> int:
 
     print(f"\n{GREEN}Everything works.{RESET}")
     print("\nOne last thing: open your Supabase SQL editor and run the contents of")
-    print("migrations/0001_init.sql if you have not already — that creates the tables.")
+    print("migrations/0001_init.sql if you have not already - that creates the tables.")
     if input("\nStart the bot now? [Y/n] ").strip().lower() in ("", "y", "yes"):
         print(f"\n{DIM}Starting. Leave this window open; Ctrl+C stops the bot.{RESET}\n")
         return subprocess.call([sys.executable, "-m", "bot.main"])
@@ -245,5 +266,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except KeyboardInterrupt:
-        print("\nStopped. Nothing was lost — run the same command again to continue.")
+        print("\nStopped. Nothing was lost - run the same command again to continue.")
         sys.exit(1)

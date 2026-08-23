@@ -4,7 +4,7 @@ invented or lost (build plan session 5). Requires a real GEMINI_API_KEY.
 
   python scripts/summarize_eval.py
 
-Only runs items marked is_informational=true in the eval set — the same
+Only runs items marked is_informational=true in the eval set - the same
 gate the real pipeline applies. Do not trust this output unverified: check
 every extracted number, name, and code against the source transcript by eye.
 """

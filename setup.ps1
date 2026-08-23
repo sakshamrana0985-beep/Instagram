@@ -87,7 +87,7 @@ Write-Host "Installing dependencies (a minute or two the first time)..."
 & $venvPython -m pip install --quiet -e ".[dev]"
 if ($LASTEXITCODE -ne 0) {
     Write-Host ""
-    Write-Host "Install failed. The lines above say why — send them over."
+    Write-Host "Install failed. The lines above say why - send them over."
     exit 1
 }
 
