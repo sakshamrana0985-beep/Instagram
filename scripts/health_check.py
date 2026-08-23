@@ -181,13 +181,21 @@ def check_database(dsn: str) -> CheckResult:
     return asyncio.run(_check())
 
 
+def account_username(user: object) -> str:
+    """apify-client used to return a plain dict and now returns a typed model,
+    so read either shape rather than tying the check to one client version."""
+    if isinstance(user, dict):
+        return str(user.get("username") or "?")
+    return str(getattr(user, "username", None) or "?")
+
+
 def check_apify(token: str) -> CheckResult:
     try:
         from apify_client import ApifyClient
 
         client = ApifyClient(token)
         user = client.user().get()
-        return CheckResult("Apify", True, f"account {user.get('username', '?')}")
+        return CheckResult("Apify", True, f"account {account_username(user)}")
     except Exception as exc:  # noqa: BLE001
         return CheckResult("Apify", False, str(exc))
 

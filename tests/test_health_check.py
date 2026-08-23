@@ -58,3 +58,28 @@ def test_reserved_characters_in_the_password_are_caught(password, expected):
 
 def test_percent_encoded_password_passes():
     assert inspect_db_url("postgresql://postgres:pa%40ss%2Fwo%3Frd@db.x.supabase.co:5432/postgres") is None
+
+
+class _TypedUser:
+    """Shape newer apify-client versions return instead of a dict."""
+
+    username = "shubham"
+
+
+def test_apify_username_read_from_a_typed_response():
+    from scripts.health_check import account_username
+
+    assert account_username(_TypedUser()) == "shubham"
+
+
+def test_apify_username_read_from_a_dict_response():
+    from scripts.health_check import account_username
+
+    assert account_username({"username": "shubham"}) == "shubham"
+
+
+def test_apify_username_falls_back_when_absent():
+    from scripts.health_check import account_username
+
+    assert account_username(object()) == "?"
+    assert account_username({}) == "?"
