@@ -7,6 +7,13 @@ See `docs/PRD-and-Architecture.md` for the full spec and
 ## Setup
 
 ```bash
+bash setup.sh    # Mac/Linux - installs, asks for your keys, starts the bot
+.\setup.ps1      # Windows PowerShell, same thing
+```
+
+Doing it by hand instead:
+
+```bash
 pip install -e ".[dev]"
 cp .env.example .env   # fill in your keys
 python scripts/health_check.py

@@ -57,4 +57,4 @@ def test_reserved_characters_in_the_password_are_caught(password, expected):
 
 
 def test_percent_encoded_password_passes():
-    assert inspect_db_url("postgresql://postgres:42%40%3F5%2FfJupmPuQ3@db.x.supabase.co:5432/postgres") is None
+    assert inspect_db_url("postgresql://postgres:pa%40ss%2Fwo%3Frd@db.x.supabase.co:5432/postgres") is None

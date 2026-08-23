@@ -9,6 +9,23 @@ roughly 2,000 Instagram reels.
 
 ---
 
+## The short version
+
+Collect the seven values below (steps 1-3), then run **one command** from the
+project folder and answer its questions:
+
+```bash
+bash setup.sh          # Mac / Linux
+.\setup.ps1            # Windows PowerShell
+```
+
+It installs everything into an isolated environment, asks for each key in turn,
+tells you immediately if one is wrong, and offers to start the bot. Re-running
+it is safe - press Enter to keep any value you already gave. The rest of this
+page is the same thing done by hand, plus what each failure means.
+
+---
+
 ## Step 1 — Create the bot (2 minutes)
 
 1. Open Telegram, search for **@BotFather**, hit Start.
@@ -75,9 +92,10 @@ no spaces around the `=`. `.env` is gitignored — it never leaves your machine.
 ## Step 5 — Check everything works
 
 ```bash
-pip install -e ".[dev]"
-python scripts/health_check.py
+python scripts/first_run.py --check
 ```
+
+(or `python scripts/health_check.py` for the same checks without the wizard)
 
 You want six `[OK ]` lines: Telegram, Gemini, Groq, Supabase, Postgres, Apify.
 
