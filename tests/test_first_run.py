@@ -2,7 +2,15 @@
 gets the same treatment as the pipeline."""
 import pytest
 
-from scripts.first_run import encode_db_password, mask, normalize, prevalidate, read_env, write_env
+from scripts.first_run import (
+    encode_db_password,
+    identify,
+    mask,
+    normalize,
+    prevalidate,
+    read_env,
+    write_env,
+)
 
 
 def test_read_env_parses_and_ignores_comments_and_blanks(tmp_path):
@@ -89,3 +97,38 @@ def test_prevalidate_catches_bad_input_before_any_network_call(var, value):
 )
 def test_prevalidate_accepts_good_input(var, value):
     assert prevalidate(var, value) is None
+
+
+@pytest.mark.parametrize(
+    "var,value,expected_hint",
+    [
+        ("TELEGRAM_BOT_TOKEN", "gsk_abcdefghijklmnop", "Groq key"),
+        ("GROQ_API_KEY", "https://wopo.supabase.co", "Supabase project URL"),
+        ("GEMINI_API_KEY", "apify_api_abc", "Apify token"),
+        ("APIFY_TOKEN", "8881269597:AAFSw0QUSWXpZ1X0RgVIxjl3okMABrn3ZF", "Telegram bot token"),
+        ("SUPABASE_URL", "postgresql://postgres:pw@db.x.supabase.co:5432/postgres", "database connection"),
+    ],
+)
+def test_a_value_pasted_at_the_wrong_question_is_named(var, value, expected_hint):
+    """The paste landing one question off is the mistake that actually happens."""
+    problem = prevalidate(var, value)
+
+    assert problem is not None
+    assert expected_hint in problem
+
+
+@pytest.mark.parametrize(
+    "var,value",
+    [
+        ("TELEGRAM_BOT_TOKEN", "8881269597:AAFSw0QUSWXpZ1X0RgVIxjl3okMABrn3ZF"),
+        ("GROQ_API_KEY", "gsk_abcdefghijklmnop"),
+        ("APIFY_TOKEN", "apify_api_abc"),
+        ("GEMINI_API_KEY", "AQ.Ab8RN6IcExampleKeyValue"),
+    ],
+)
+def test_the_right_value_at_the_right_question_passes(var, value):
+    assert prevalidate(var, value) is None
+
+
+def test_a_shapeless_telegram_token_is_rejected():
+    assert "digits, a colon" in (prevalidate("TELEGRAM_BOT_TOKEN", "just-some-text") or "")

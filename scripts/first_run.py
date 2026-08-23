@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -174,10 +175,47 @@ def normalize(var: str, value: str) -> str:
     return value
 
 
+# Most of these values announce what they are. Pasting into the wrong question
+# is the single most common mistake, and it costs a full round trip to discover
+# from a 404, so name the mix-up at the prompt instead.
+_FINGERPRINTS: list[tuple[str, re.Pattern[str], str]] = [
+    ("SUPABASE_DB_URL", re.compile(r"^postgres(ql)?://"), "database connection string"),
+    ("SUPABASE_URL", re.compile(r"^https://[a-z0-9-]+\.supabase\.co/?$"), "Supabase project URL"),
+    ("SUPABASE_SERVICE_KEY", re.compile(r"^sb_(secret|publishable)_"), "Supabase API key"),
+    ("GROQ_API_KEY", re.compile(r"^gsk_"), "Groq key"),
+    ("APIFY_TOKEN", re.compile(r"^apify_"), "Apify token"),
+    ("TELEGRAM_BOT_TOKEN", re.compile(r"^\d{6,}:[A-Za-z0-9_-]{20,}$"), "Telegram bot token"),
+]
+
+# What each field must look like, where that is knowable. Gemini keys have no
+# stable shape, so they are only checked against the fingerprints above.
+_EXPECTED = {
+    "TELEGRAM_BOT_TOKEN": (re.compile(r"^\d{6,}:[A-Za-z0-9_-]{20,}$"), "digits, a colon, then a long code"),
+    "GROQ_API_KEY": (re.compile(r"^gsk_"), "it should start with gsk_"),
+    "APIFY_TOKEN": (re.compile(r"^apify_"), "it should start with apify_"),
+}
+
+
+def identify(value: str) -> tuple[str, str] | None:
+    """Which field a pasted value belongs to, if it is recognisable."""
+    for var, pattern, label in _FINGERPRINTS:
+        if pattern.match(value):
+            return var, label
+    return None
+
+
 def prevalidate(var: str, value: str) -> str | None:
     """Cheap format checks that run before any network call."""
     if not value:
         return "empty"
+
+    identified = identify(value)
+    if identified is not None and identified[0] != var:
+        return f"that looks like your {identified[1]}, not this one - check you are on the right question"
+
+    expected = _EXPECTED.get(var)
+    if expected is not None and not expected[0].match(value):
+        return f"that does not look right - {expected[1]}"
     if var == "SUPABASE_SERVICE_KEY":
         return inspect_service_key(value)
     if var == "SUPABASE_DB_URL":
@@ -213,14 +251,21 @@ def ask_for(step: Step, existing: str) -> str:
     print(f"\n{BOLD}{step.title}{RESET}")
     print(f"  {DIM}{step.where}{RESET}")
     print(f"  {DIM}Looks like: {step.looks_like}{RESET}")
-    if existing:
-        answer = input(f"  Currently {mask(existing)}. Enter to keep, or paste a new one: ").strip()
-        return normalize(step.var, answer) if answer else existing
     while True:
-        answer = normalize(step.var, input("  Paste it here: "))
+        if existing:
+            raw = input(f"  Currently {mask(existing)}. Enter to keep, or paste a new one: ").strip()
+            if not raw:
+                return existing
+        else:
+            raw = input("  Paste it here: ")
+
+        answer = normalize(step.var, raw)
         problem = prevalidate(step.var, answer)
         if problem is None:
             return answer
+
+        # A replacement is checked as strictly as a first answer: overwriting a
+        # good value with a misplaced paste is the failure this exists to stop.
         print(f"  {YELLOW}{problem}{RESET}")
         print(f"  {DIM}Try again, or press Ctrl+C to stop.{RESET}")
 
